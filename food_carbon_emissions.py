@@ -114,7 +114,7 @@ def predict_environmental_impact(food, quantity, meal_time):
     if total_emissions == 0:
         total_emissions = np.random.uniform(0.5, 5.0) * quantity
 
-    # Console Output for Debugging
+    # ✅ Console Output for Debugging
     print(f"\nYour meal choice of {quantity} serving(s) of {food} during {meal_time} suggests the following environmental impact:")
     print(f"🌍 Estimated Greenhouse Gas Emissions: {total_emissions:.2f} kg CO2eq")
     print("Higher emissions indicate a larger carbon footprint. Consider choosing plant-based foods.")
@@ -124,14 +124,14 @@ def predict_environmental_impact(food, quantity, meal_time):
         for ingredient, impact in ingredient_impacts.items():
             print(f"- {ingredient}: {impact:.2f} kg CO2eq")
 
-    # Web Output
+    # ✅ Web Output (With Quantity & Meal Time)
     formatted_output = f"""
-        <p>Your meal choice of <strong>{quantity}</strong> serving(s) of <strong>{food}</strong> during <strong>{meal_time}</strong> suggests the following environmental impact:</p>
+        <p><strong>Your meal choice:</strong> {quantity} serving(s) of <strong>{food}</strong> during <strong>{meal_time}</strong>.</p>
         <p><strong>🌍 Estimated Greenhouse Gas Emissions:</strong> {total_emissions:.2f} kg CO2eq</p>
         <p>Higher emissions indicate a larger carbon footprint. Consider choosing plant-based or sustainably sourced foods.</p>
     """
     if ingredient_impacts:
-        formatted_output += "<h5>Breakdown of Main Ingredient Contribution:</h5><ul>"
+        formatted_output += "<h5>Ingredient Contributions:</h5><ul>"
         for ingredient, impact in ingredient_impacts.items():
             formatted_output += f"<li>{ingredient}: {impact:.2f} kg CO2eq</li>"
         formatted_output += "</ul>"
@@ -142,8 +142,13 @@ def predict_environmental_impact(food, quantity, meal_time):
 def home():
     if request.method == "POST":
         food = request.form.get("food")
-        quantity = float(request.form.get("quantity", 1))
-        meal_time = request.form.get("meal_time", "Lunch")
+        quantity = request.form.get("quantity")
+        meal_time = request.form.get("meal_time")
+
+        try:
+            quantity = float(quantity)
+        except ValueError:
+            quantity = 1  # Default if user enters invalid quantity
 
         predicted_emissions, ingredient_contributions, formatted_message = predict_environmental_impact(food, quantity, meal_time)
 
@@ -151,8 +156,8 @@ def home():
                                predicted_emissions=predicted_emissions,
                                ingredient_contributions=ingredient_contributions,
                                formatted_message=formatted_message)
+
     return render_template("home.html")
 
 if __name__ == "__main__":
     app.run(debug=True)
-
