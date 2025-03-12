@@ -67,7 +67,7 @@ model_pipeline = Pipeline([
 model_pipeline.fit(X_train, y_train)
 
 # Set your OpenAI API key from an environment variable for security
-openai.api_key = os.environ.get('')
+openai.api_key = os.environ.get('OPENAI_API_KEY')
 
 def extract_ingredients(dish_name):
     """
