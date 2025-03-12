@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Prediction Result</title>
+</head>
+<body>
+    <h1>Prediction Result</h1>
+    <p>Food: {{ food }}</p>
+    <p>Quantity: {{ quantity }}</p>
+    <p>Meal Time: {{ meal_time }}</p>
+    <p>Estimated Emissions: {{ predicted_impact }} kg CO2eq</p>
+
+    <h2>Ingredient Breakdown</h2>
+    <ul>
+        {% for ingredient, impact in ingredient_contributions.items() %}
+            <li>{{ ingredient }}: {{ impact }} kg CO2eq</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
