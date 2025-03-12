@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+<head>
+    <title>Food Carbon Emissions API</title>
+</head>
+<body>
+    <h1>Food Carbon Emissions API</h1>
+    <form method="POST">
+        <label for="food">Dish Name:</label>
+        <input type="text" id="food" name="food" required>
+        <br>
+        <label for="quantity">Quantity:</label>
+        <input type="number" id="quantity" name="quantity" value="1" required>
+        <br>
+        <label for="meal_time">Meal Time:</label>
+        <select id="meal_time" name="meal_time">
+            <option value="Breakfast">Breakfast</option>
+            <option value="Lunch">Lunch</option>
+            <option value="Dinner">Dinner</option>
+            <option value="Snack">Snack</option>
+        </select>
+        <br>
+        <input type="submit" value="Predict Emissions">
+    </form>
+
+    {% if predicted_emissions is defined %}
+    <h2>Results</h2>
+    <p><strong>Dish:</strong> {{ food }}</p>
+    <p><strong>Quantity:</strong> {{ quantity }}</p>
+    <p><strong>Meal Time:</strong> {{ meal_time }}</p>
+    <p><strong>Predicted Emissions:</strong> {{ predicted_emissions }} kg CO2eq</p>
+    
+    {% if ingredient_contributions %}
+    <h3>Ingredient Contributions:</h3>
+    <ul>
+        {% for ingredient, impact in ingredient_contributions.items() %}
+        <li>{{ ingredient }}: {{ impact }} kg CO2eq</li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p>No detailed ingredient breakdown available.</p>
+    {% endif %}
+    {% endif %}
+</body>
+</html>
