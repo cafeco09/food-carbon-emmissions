@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+<head>
+    <title>Test Output</title>
+</head>
+<body>
+    <h1>Test Output</h1>
+    <p><strong>Ingredients for {{ dish }}:</strong> {{ ingredients }}</p>
+    <pre>{{ impact_message }}</pre>
+    <h3>Breakdown of Main Ingredient Contribution:</h3>
+    {% if ingredient_contributions %}
+      <ul>
+      {% for ingredient, impact in ingredient_contributions.items() %}
+        <li>{{ ingredient }}: {{ impact }} kg CO2eq</li>
+      {% endfor %}
+      </ul>
+    {% else %}
+      <p>No detailed ingredient breakdown available.</p>
+    {% endif %}
+</body>
+</html>
