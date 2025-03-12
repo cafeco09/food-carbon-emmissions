@@ -28,26 +28,37 @@ label_encoder_food = LabelEncoder()
 df_combined['Food_Encoded'] = label_encoder_food.fit_transform(df_combined['Food'])
 
 meal_times = ['Breakfast', 'Lunch', 'Dinner', 'Snack']
-df_combined['Meal_Time'] = meal_times * (len(df_combined) // len(meal_times)) + meal_times[:len(df_combined) % len(meal_times)]
+df_combined['Meal_Time'] = (
+    meal_times * (len(df_combined) // len(meal_times))
+    + meal_times[:len(df_combined) % len(meal_times)]
+)
 label_encoder_meal = LabelEncoder()
 df_combined['Meal_Time_Encoded'] = label_encoder_meal.fit_transform(df_combined['Meal_Time'])
 
 # Selecting features and target
-features = ['Food_Encoded', 'Meal_Time_Encoded', 'food_emissions_land_use', 'food_emissions_farm',
-            'food_emissions_animal_feed', 'food_emissions_processing', 'food_emissions_transport',
-            'food_emissions_retail', 'food_emissions_packaging', 'food_emissions_losses']
+features = [
+    'Food_Encoded', 'Meal_Time_Encoded', 'food_emissions_land_use',
+    'food_emissions_farm', 'food_emissions_animal_feed',
+    'food_emissions_processing', 'food_emissions_transport',
+    'food_emissions_retail', 'food_emissions_packaging',
+    'food_emissions_losses'
+]
 target = 'food_emissions_farm'  # Using farm emissions as a proxy for environmental impact
 
 X = df_combined[features]
 y = df_combined[target]
 
 # Splitting data into training and test sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
 
 # Creating a preprocessing pipeline
-preprocessor = ColumnTransformer(transformers=[
-    ('num', StandardScaler(), features)
-])
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', StandardScaler(), features)
+    ]
+)
 
 # Defining the model pipeline
 model_pipeline = Pipeline([
@@ -63,6 +74,7 @@ openai.api_key = os.environ.get('OPENAI_API_KEY')
 if not openai.api_key:
     raise ValueError("OPENAI_API_KEY not found in environment variables.")
 
+
 def extract_ingredients(dish_name):
     """
     Extracts the main ingredients of a given dish using OpenAI's GPT-3.5-turbo model.
@@ -73,7 +85,10 @@ def extract_ingredients(dish_name):
     Returns:
         list: A list of extracted ingredients.
     """
-    prompt = f"List only the main ingredients for the dish called '{dish_name}' as a comma-separated list with no extra commentary."
+    prompt = (
+        f"List only the main ingredients for the dish called '{dish_name}' as a "
+        "comma-separated list with no extra commentary."
+    )
     try:
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -88,6 +103,7 @@ def extract_ingredients(dish_name):
     except Exception as e:
         print(f"An error occurred while extracting ingredients: {e}")
         return []
+
 
 def predict_environmental_impact(food, quantity, meal_time):
     """
@@ -111,14 +127,18 @@ def predict_environmental_impact(food, quantity, meal_time):
         dataset_foods = [f.lower() for f in df_combined['Food'].tolist()]
         for ingredient in ingredients:
             # First, try direct substring search.
-            matched_ingredient = df_combined[df_combined['Food'].str.contains(ingredient, case=False, na=False)]
+            matched_ingredient = df_combined[
+                df_combined['Food'].str.contains(ingredient, case=False, na=False)
+            ]
             
             # If no direct match, try token matching.
             if matched_ingredient.empty:
                 tokens = ingredient.split()
                 for token in tokens:
                     token = token.strip().lower()
-                    matched_ingredient = df_combined[df_combined['Food'].str.lower().str.contains(token, na=False)]
+                    matched_ingredient = df_combined[
+                        df_combined['Food'].str.lower().str.contains(token, na=False)
+                    ]
                     if not matched_ingredient.empty:
                         break
             
@@ -130,7 +150,9 @@ def predict_environmental_impact(food, quantity, meal_time):
                     close_matches = difflib.get_close_matches(token, dataset_foods, n=1, cutoff=0.4)
                     if close_matches:
                         match = close_matches[0]
-                        matched_ingredient = df_combined[df_combined['Food'].str.lower() == match]
+                        matched_ingredient = df_combined[
+                            df_combined['Food'].str.lower() == match
+                        ]
                         if not matched_ingredient.empty:
                             break
             
@@ -150,8 +172,17 @@ def predict_environmental_impact(food, quantity, meal_time):
 
     return total_emissions, ingredient_impacts
 
+
+# Create the Flask app and define routes
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Food Carbon Emissions API is running!"
+
+
 if __name__ == "__main__":
-    # Define dish details
+    # Define dish details for testing
     dish = "Pasta"
     quantity = 2
     meal_time = 'Lunch'
@@ -161,7 +192,9 @@ if __name__ == "__main__":
     print(f"Ingredients for {dish}: {ingredients}")
 
     # Predict environmental impact for the dish using improved matching on ingredients
-    predicted_impact, ingredient_contributions = predict_environmental_impact(dish, quantity, meal_time)
+    predicted_impact, ingredient_contributions = predict_environmental_impact(
+        dish, quantity, meal_time
+    )
     
     # Create and display a formatted overall impact message
     impact_message = (
@@ -181,14 +214,6 @@ if __name__ == "__main__":
     else:
         print("No detailed ingredient breakdown available.")
 
-app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return "Food Carbon Emissions API is running!"
-
-if __name__ == "__main__":
-    import os
+    # Start the Flask app
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-
