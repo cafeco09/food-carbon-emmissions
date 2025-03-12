@@ -79,19 +79,15 @@ def extract_ingredients(dish_name):
 
 def predict_environmental_impact(food, quantity, meal_time):
     """
-    Predicts the environmental impact of a given food choice.
+    Predicts the environmental impact of a given food choice and provides an ingredient breakdown.
     """
     ingredient_impacts = {}
     total_emissions = 0
-    
-    if food in df_combined['Food'].values:
-        food_data = df_combined[df_combined['Food'] == food].iloc[0]
-        total_emissions = food_data['food_emissions_farm'] * quantity
-    else:
-        ingredients = extract_ingredients(food)
-        if not ingredients:
-            return np.random.uniform(0.5, 5.0) * quantity, {}
 
+    # Always attempt to extract ingredients for a detailed breakdown.
+    ingredients = extract_ingredients(food)
+    
+    if ingredients:
         dataset_foods = [f.lower() for f in df_combined['Food'].tolist()]
         for ingredient in ingredients:
             matched_ingredient = df_combined[df_combined['Food'].str.contains(ingredient, case=False, na=False)]
@@ -104,7 +100,14 @@ def predict_environmental_impact(food, quantity, meal_time):
                 impact = matched_ingredient.iloc[0]['food_emissions_farm'] * quantity
                 ingredient_impacts[ingredient] = impact
                 total_emissions += impact
-    
+    else:
+        # Fallback: if no ingredients could be extracted, check if food is in dataset.
+        if food in df_combined['Food'].values:
+            food_data = df_combined[df_combined['Food'] == food].iloc[0]
+            total_emissions = food_data['food_emissions_farm'] * quantity
+        else:
+            total_emissions = np.random.uniform(0.5, 5.0) * quantity
+
     return total_emissions, ingredient_impacts
 
 @app.route('/')
@@ -123,12 +126,21 @@ def predict():
     
     predicted_impact, ingredient_contributions = predict_environmental_impact(food, quantity, meal_time)
     
+    impact_message = (
+        f"Your meal choice of {quantity} serving(s) of {food} during {meal_time} suggests the following environmental impact:\n"
+        f"🌍 Estimated Greenhouse Gas Emissions: {predicted_impact:.2f} kg CO2eq\n"
+        "Environmental impact refers to the effect that food production, processing, and transportation have on the planet.\n"
+        "Higher emissions indicate a larger carbon footprint, which contributes more to climate change. "
+        "Consider choosing plant-based or sustainably sourced foods to help reduce your impact."
+    )
+    
     return render_template('result.html', 
                            food=food, 
                            quantity=quantity, 
                            meal_time=meal_time, 
                            predicted_impact=predicted_impact, 
-                           ingredient_contributions=ingredient_contributions)
+                           ingredient_contributions=ingredient_contributions,
+                           impact_message=impact_message)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
