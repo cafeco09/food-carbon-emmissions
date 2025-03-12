@@ -179,3 +179,15 @@ if __name__ == "__main__":
             print(f"- {ingredient}: {impact:.2f} kg CO2eq")
     else:
         print("No detailed ingredient breakdown available.")
+
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Food Carbon Emissions API is running!"
+
+if __name__ == "__main__":
+    import os
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
+
