@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Food Carbon Emissions</title>
+</head>
+<body>
+    <h1>Estimate Food Carbon Emissions</h1>
+    <form action="/predict" method="POST">
+        <label for="food">Food Item:</label>
+        <input type="text" id="food" name="food" required>
+        <label for="quantity">Quantity:</label>
+        <input type="number" id="quantity" name="quantity" min="1" required>
+        <button type="submit">Predict</button>
+    </form>
+</body>
+</html>
