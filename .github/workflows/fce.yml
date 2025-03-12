@@ -1,4 +1,4 @@
-name: Example Workflow
+name: fce Workflow
 
 on:
   push:
@@ -13,4 +13,4 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Run a script that uses the OpenAI API
-        run: python your_script.py
+        run: python food_carbon_emissions.py
