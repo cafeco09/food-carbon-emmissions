@@ -9,7 +9,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
-from flask import Flask
+from flask import Flask, request, render_template, jsonify
 
 # Load datasets
 file_path1 = "environmental-footprint-milks.csv"
@@ -70,11 +70,10 @@ model_pipeline = Pipeline([
 # Training the model
 model_pipeline.fit(X_train, y_train)
 
-# Retrieve OpenAI API key from environment variable (e.g., set via GitHub Secrets)
+# Retrieve OpenAI API key from environment variable
 openai.api_key = os.environ.get('OPENAI_API_KEY')
 if not openai.api_key:
     raise ValueError("OPENAI_API_KEY not found in environment variables.")
-
 
 def extract_ingredients(dish_name):
     """
@@ -105,15 +104,10 @@ def extract_ingredients(dish_name):
         print(f"An error occurred while extracting ingredients: {e}")
         return []
 
-
 def predict_environmental_impact(food, quantity, meal_time):
     """
     Predicts the environmental impact (GHG emissions in kg CO2eq) of a given food choice
     and provides an ingredient breakdown.
-
-    It always attempts to extract ingredients and uses fuzzy matching to find the best
-    dataset match for each ingredient. If no ingredient contributions are found, it falls
-    back to using an exact match (if available) or a random estimation.
 
     Returns:
         tuple: total emissions and a breakdown of emissions per ingredient.
@@ -173,34 +167,69 @@ def predict_environmental_impact(food, quantity, meal_time):
 
     return total_emissions, ingredient_impacts
 
-
 # Create the Flask app and define routes
 app = Flask(__name__)
 
-@app.route('/')
+@app.route("/", methods=["GET", "POST"])
 def home():
-    return "Food Carbon Emissions API is running!"
+    if request.method == "POST":
+        food = request.form.get("food")
+        try:
+            quantity = float(request.form.get("quantity", 1))
+        except ValueError:
+            quantity = 1
+        meal_time = request.form.get("meal_time", "Lunch")
+        
+        predicted_emissions, ingredient_contributions = predict_environmental_impact(food, quantity, meal_time)
+        return render_template("home.html", food=food, quantity=quantity, meal_time=meal_time,
+                               predicted_emissions=predicted_emissions,
+                               ingredient_contributions=ingredient_contributions)
+    
+    # For GET requests, simply show the form.
+    return render_template("home.html")
 
+@app.route("/predict", methods=["POST"])
+def predict_route():
+    """
+    Optional: A JSON API endpoint for predictions.
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid input, please provide JSON data"}), 400
+
+    food = data.get("food")
+    quantity = data.get("quantity", 1)
+    meal_time = data.get("meal_time", "Lunch")
+
+    if not food:
+        return jsonify({"error": "Missing 'food' parameter"}), 400
+
+    predicted_emissions, ingredient_contributions = predict_environmental_impact(food, quantity, meal_time)
+
+    result = {
+        "food": food,
+        "quantity": quantity,
+        "meal_time": meal_time,
+        "predicted_emissions": predicted_emissions,
+        "ingredient_contributions": ingredient_contributions
+    }
+    return jsonify(result)
 
 def run_tests():
     """
     Runs test predictions and prints outputs to the console.
     """
-    # Define dish details for testing
     dish = "Pasta"
     quantity = 2
     meal_time = 'Lunch'
     
-    # Extract and print ingredients for the dish
     ingredients = extract_ingredients(dish)
     print(f"Ingredients for {dish}: {ingredients}")
 
-    # Predict environmental impact for the dish using improved matching on ingredients
     predicted_impact, ingredient_contributions = predict_environmental_impact(
         dish, quantity, meal_time
     )
     
-    # Create and display a formatted overall impact message
     impact_message = (
         f"Your meal choice of {quantity} serving(s) of {dish} during {meal_time} suggests the following environmental impact:\n"
         f"🌍 Estimated Greenhouse Gas Emissions: {predicted_impact:.2f} kg CO2eq\n"
@@ -210,7 +239,6 @@ def run_tests():
     )
     print("\n" + impact_message)
     
-    # Display the ingredient breakdown if available
     if ingredient_contributions:
         print("Breakdown of main ingredient contribution:")
         for ingredient, impact in ingredient_contributions.items():
@@ -218,9 +246,7 @@ def run_tests():
     else:
         print("No detailed ingredient breakdown available.")
 
-
 if __name__ == "__main__":
-    # Use a command line argument to determine which mode to run
     if len(sys.argv) > 1 and sys.argv[1] == "test":
         run_tests()
     else:
