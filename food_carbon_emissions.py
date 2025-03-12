@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import difflib
 import openai
+import re
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import LabelEncoder, StandardScaler
@@ -98,11 +99,14 @@ def extract_ingredients(dish_name):
             ]
         )
         content = response.choices[0].message.content
-        ingredients = [ingredient.strip() for ingredient in content.split(',')]
-        return ingredients
+        # Escape special regex characters in each ingredient to avoid warnings.
+        ingredients = [re.escape(ingredient.strip()) for ingredient in content.split(',')]
+        # For display purposes, show the unescaped version.
+        display_ingredients = [ingredient.strip() for ingredient in content.split(',')]
+        return ingredients, display_ingredients
     except Exception as e:
         print(f"An error occurred while extracting ingredients: {e}")
-        return []
+        return [], []
 
 def predict_environmental_impact(food, quantity, meal_time):
     """
@@ -116,19 +120,19 @@ def predict_environmental_impact(food, quantity, meal_time):
     total_emissions = 0
 
     # Always attempt to extract ingredients for a detailed breakdown.
-    ingredients = extract_ingredients(food)
+    regex_ingredients, display_ingredients = extract_ingredients(food)
     
-    if ingredients:
+    if regex_ingredients:
         dataset_foods = [f.lower() for f in df_combined['Food'].tolist()]
-        for ingredient in ingredients:
-            # First, try direct substring search.
+        for regex_ing, display_ing in zip(regex_ingredients, display_ingredients):
+            # First, try direct substring search using escaped regex.
             matched_ingredient = df_combined[
-                df_combined['Food'].str.contains(ingredient, case=False, na=False)
+                df_combined['Food'].str.contains(regex_ing, case=False, na=False)
             ]
             
             # If no direct match, try token matching.
             if matched_ingredient.empty:
-                tokens = ingredient.split()
+                tokens = display_ing.split()
                 for token in tokens:
                     token = token.strip().lower()
                     matched_ingredient = df_combined[
@@ -139,7 +143,7 @@ def predict_environmental_impact(food, quantity, meal_time):
             
             # If still no match, use fuzzy matching on tokens.
             if matched_ingredient.empty:
-                tokens = ingredient.split()
+                tokens = display_ing.split()
                 for token in tokens:
                     token = token.strip().lower()
                     close_matches = difflib.get_close_matches(token, dataset_foods, n=1, cutoff=0.4)
@@ -153,7 +157,7 @@ def predict_environmental_impact(food, quantity, meal_time):
             
             if not matched_ingredient.empty:
                 impact = matched_ingredient.iloc[0]['food_emissions_farm'] * quantity
-                ingredient_impacts[ingredient] = impact
+                ingredient_impacts[display_ing] = impact
                 total_emissions += impact
 
     # Fallback: if no ingredient breakdown was found, try an exact match.
@@ -191,7 +195,7 @@ def home():
 @app.route("/predict", methods=["POST"])
 def predict_route():
     """
-    Optional: A JSON API endpoint for predictions.
+    JSON API endpoint for predictions.
     """
     data = request.get_json()
     if not data:
@@ -215,24 +219,47 @@ def predict_route():
     }
     return jsonify(result)
 
+@app.route("/test_output", methods=["GET"])
+def test_output():
+    """
+    A test route to display detailed output similar to your Colab prints.
+    """
+    dish = "Pasta"
+    quantity = 2
+    meal_time = "Lunch"
+    
+    regex_ingredients, display_ingredients = extract_ingredients(dish)
+    predicted_emissions, ingredient_contributions = predict_environmental_impact(dish, quantity, meal_time)
+    
+    impact_message = (
+        f"Your meal choice of {quantity} serving(s) of {dish} during {meal_time} suggests the following environmental impact:\n"
+        f"🌍 Estimated Greenhouse Gas Emissions: {predicted_emissions:.2f} kg CO2eq\n"
+        "Environmental impact refers to the effect that food production, processing, and transportation have on the planet.\n"
+        "Higher emissions indicate a larger carbon footprint, which contributes more to climate change. "
+        "Consider choosing plant-based or sustainably sourced foods to help reduce your impact."
+    )
+    
+    return render_template("test_output.html", dish=dish, 
+                           ingredients=display_ingredients, 
+                           impact_message=impact_message,
+                           ingredient_contributions=ingredient_contributions)
+
 def run_tests():
     """
     Runs test predictions and prints outputs to the console.
     """
     dish = "Pasta"
     quantity = 2
-    meal_time = 'Lunch'
+    meal_time = "Lunch"
     
-    ingredients = extract_ingredients(dish)
-    print(f"Ingredients for {dish}: {ingredients}")
+    regex_ingredients, display_ingredients = extract_ingredients(dish)
+    print(f"Ingredients for {dish}: {display_ingredients}")
 
-    predicted_impact, ingredient_contributions = predict_environmental_impact(
-        dish, quantity, meal_time
-    )
+    predicted_emissions, ingredient_contributions = predict_environmental_impact(dish, quantity, meal_time)
     
     impact_message = (
         f"Your meal choice of {quantity} serving(s) of {dish} during {meal_time} suggests the following environmental impact:\n"
-        f"🌍 Estimated Greenhouse Gas Emissions: {predicted_impact:.2f} kg CO2eq\n"
+        f"🌍 Estimated Greenhouse Gas Emissions: {predicted_emissions:.2f} kg CO2eq\n"
         "Environmental impact refers to the effect that food production, processing, and transportation have on the planet.\n"
         "Higher emissions indicate a larger carbon footprint, which contributes more to climate change. "
         "Consider choosing plant-based or sustainably sourced foods to help reduce your impact.\n"
