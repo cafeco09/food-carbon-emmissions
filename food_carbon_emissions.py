@@ -1,4 +1,5 @@
 import os
+import sys
 import pandas as pd
 import numpy as np
 import difflib
@@ -181,7 +182,10 @@ def home():
     return "Food Carbon Emissions API is running!"
 
 
-if __name__ == "__main__":
+def run_tests():
+    """
+    Runs test predictions and prints outputs to the console.
+    """
     # Define dish details for testing
     dish = "Pasta"
     quantity = 2
@@ -214,6 +218,11 @@ if __name__ == "__main__":
     else:
         print("No detailed ingredient breakdown available.")
 
-    # Start the Flask app
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+
+if __name__ == "__main__":
+    # Use a command line argument to determine which mode to run
+    if len(sys.argv) > 1 and sys.argv[1] == "test":
+        run_tests()
+    else:
+        port = int(os.environ.get("PORT", 5000))
+        app.run(host="0.0.0.0", port=port)
